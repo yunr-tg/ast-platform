@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: task-scheduler
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        file-extension: yaml
+        group: DEFAULT_GROUP
+        refresh-enabled: true
+        # Shared configs can be added here
+        shared-configs:
+          - data-id: ast-platform-common.yaml
+            refresh: true

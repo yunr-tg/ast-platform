@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: task-scheduler
+  datasource:
+    driver-class-name: ${AST_SCHEDULER_DB_DRIVER:org.h2.Driver}
+    url: ${AST_SCHEDULER_DB_URL:jdbc:h2:mem:ast_scheduler;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false}
+    username: ${AST_SCHEDULER_DB_USERNAME:sa}
+    password: ${AST_SCHEDULER_DB_PASSWORD:}
+
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  tracing:
+    sampling:
+      probability: 1.0
+  observation:
+    key-values:
+      application: ${spring.application.name}
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+
+ast:
+  scheduler:
+    local-queue-enabled: false
+    dispatcher-enabled: false
+    pump-enabled: false
+    dispatcher-fixed-delay-ms: 1000
+    retry-fixed-delay-ms: 1000
+    callback:
+      enabled: true
+    notify:
+      enabled: false
+      fixed-delay-ms: 5000
+    compensator:
+      enabled: false
+      fixed-delay-ms: 30000
+    rocketmq:
+      enabled: false
+      endpoints: ${AST_ROCKETMQ_ENDPOINTS:127.0.0.1:8081}
+      topic: ${AST_SUBMIT_TOPIC:AST_TASK_SUBMIT_TOPIC}
+      consumer-group: GID_AST_PLATFORM_PUMP
+      tag: "*"
+

@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: task-gateway
+  datasource:
+    driver-class-name: ${AST_GATEWAY_DB_DRIVER:org.h2.Driver}
+    url: ${AST_GATEWAY_DB_URL:jdbc:h2:mem:ast_gateway;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false}
+    username: ${AST_GATEWAY_DB_USERNAME:sa}
+    password: ${AST_GATEWAY_DB_PASSWORD:}
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  tracing:
+    sampling:
+      probability: 1.0
+  observation:
+    key-values:
+      application: ${spring.application.name}
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+
+ast:
+  gateway:
+    storage-type: jdbc
+    submit-topic: ast.task.submit
+    outbox-batch-size: 100
+    immediate-publish-enabled: true
+    mock-send-success: true
+    outbox-republish-fixed-delay-ms: 3000
+    outbox-base-retry-delay-ms: 5000
+    rocketmq:
+      enabled: false
+      endpoints: ${AST_GATEWAY_RMQ_ENDPOINTS:}
+      ssl-enabled: false
+      access-key: ${AST_GATEWAY_RMQ_ACCESS_KEY:}
+      secret-key: ${AST_GATEWAY_RMQ_SECRET_KEY:}
+      message-tag: task-submit
