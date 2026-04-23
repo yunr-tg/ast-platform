@@ -8,6 +8,7 @@ public record ReadyTaskEnvelope(
         String taskType,
         String workerGroup,
         String traceId,
+        int priority,
         Instant enqueuedAt
 ) {
 

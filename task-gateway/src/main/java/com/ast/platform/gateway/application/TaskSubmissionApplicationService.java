@@ -95,7 +95,7 @@ public class TaskSubmissionApplicationService {
         String traceId = tracer.currentSpan() != null ? tracer.currentSpan().context().traceId() : UUID.randomUUID().toString();
 
         PersistedSubmission persistedSubmission = transactionTemplate.execute(status -> {
-            GatewayTask task = new GatewayTask(
+            GatewayTask task = GatewayTask.create(
                     UUID.randomUUID().toString(),
                     request.tenantId(),
                     request.taskType(),
@@ -106,9 +106,7 @@ public class TaskSubmissionApplicationService {
                     request.payload(),
                     request.callbackUrl(),
                     traceId,
-                    TaskStatus.INIT,
-                    0,
-                    now,
+                    request.priority(),
                     now
             );
 
@@ -232,7 +230,8 @@ public class TaskSubmissionApplicationService {
                 + "\",\"taskType\":\"" + task.taskType()
                 + "\",\"workerGroup\":\"" + task.workerGroup()
                 + "\",\"traceId\":\"" + task.traceId()
-                + "\"}";
+                + "\",\"priority\":" + task.priority()
+                + "}";
     }
 
     private record PublishResult(GatewayTask task, TaskPublishOutbox outbox) {

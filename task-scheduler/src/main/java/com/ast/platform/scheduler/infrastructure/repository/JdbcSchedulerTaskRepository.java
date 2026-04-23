@@ -59,7 +59,7 @@ public class JdbcSchedulerTaskRepository implements SchedulerTaskRepository {
             return new SchedulerTaskSnapshot(
                     rs.getString("task_id"), rs.getString("tenant_id"), rs.getString("task_type"), rs.getString("worker_group"),
                     rs.getString("callback_url"), rs.getString("payload"), rs.getString("trace_id"),
-                    TaskStatus.valueOf(rs.getString("status")), rs.getInt("version"), rs.getTimestamp("updated_at").toInstant()
+                    TaskStatus.valueOf(rs.getString("status")), rs.getInt("priority"), rs.getInt("version"), rs.getTimestamp("updated_at").toInstant()
             );
         }
     }

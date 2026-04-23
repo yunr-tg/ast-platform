@@ -9,6 +9,7 @@ public record TaskAggregate(
         String workerGroup,
         String dispatchToken,
         TaskStatus status,
+        int priority,
         int retryCount,
         int version,
         Instant createdAt,

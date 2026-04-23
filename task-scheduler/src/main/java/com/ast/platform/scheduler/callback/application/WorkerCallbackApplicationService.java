@@ -89,7 +89,7 @@ public class WorkerCallbackApplicationService {
             Instant nextRetryTime = now.plusSeconds(5);
             dispatchRecordRepository.save(dispatchRecord.withRetryScheduled(
                     dispatchRecord.retryCount() + 1, nextRetryTime, request.errorMessage(), request.resultPayload(), now));
-            dispatchQueueRepository.enqueueRetry(new ReadyTaskEnvelope(task.taskId(), task.tenantId(), task.taskType(), task.workerGroup(), task.traceId(), now), nextRetryTime);
+            dispatchQueueRepository.enqueueRetry(new ReadyTaskEnvelope(task.taskId(), task.tenantId(), task.taskType(), task.workerGroup(), task.traceId(), task.priority(), now), nextRetryTime);
             log.info("callback accepted with retry, taskId={}, nextRetryTime={}", task.taskId(), nextRetryTime);
             return;
         }

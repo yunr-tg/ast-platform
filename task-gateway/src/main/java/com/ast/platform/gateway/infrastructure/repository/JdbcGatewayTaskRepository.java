@@ -56,8 +56,8 @@ public class JdbcGatewayTaskRepository implements GatewayTaskRepository {
             jdbcTemplate.update("""
                     insert into gateway_task(
                         task_id, tenant_id, task_type, biz_key, request_id, worker_group, tag, payload,
-                        callback_url, trace_id, status, version, created_at, updated_at
-                    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        callback_url, trace_id, status, priority, version, created_at, updated_at
+                    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     task.taskId(),
                     task.tenantId(),
@@ -70,6 +70,7 @@ public class JdbcGatewayTaskRepository implements GatewayTaskRepository {
                     task.callbackUrl(),
                     task.traceId(),
                     task.status().name(),
+                    task.priority(),
                     task.version(),
                     timestamp(task.createdAt()),
                     timestamp(task.updatedAt())
@@ -80,7 +81,7 @@ public class JdbcGatewayTaskRepository implements GatewayTaskRepository {
         int updated = jdbcTemplate.update("""
                 update gateway_task
                    set tenant_id = ?, task_type = ?, biz_key = ?, request_id = ?, worker_group = ?, tag = ?,
-                       payload = ?, callback_url = ?, trace_id = ?, status = ?, version = ?, updated_at = ?
+                       payload = ?, callback_url = ?, trace_id = ?, status = ?, priority = ?, version = ?, updated_at = ?
                  where task_id = ? and version = ?
                 """,
                 task.tenantId(),
@@ -93,6 +94,7 @@ public class JdbcGatewayTaskRepository implements GatewayTaskRepository {
                 task.callbackUrl(),
                 task.traceId(),
                 task.status().name(),
+                task.priority(),
                 task.version(),
                 timestamp(task.updatedAt()),
                 task.taskId(),
@@ -131,6 +133,7 @@ public class JdbcGatewayTaskRepository implements GatewayTaskRepository {
                     rs.getString("callback_url"),
                     rs.getString("trace_id"),
                     TaskStatus.valueOf(rs.getString("status")),
+                    rs.getInt("priority"),
                     rs.getInt("version"),
                     rs.getTimestamp("created_at").toInstant(),
                     rs.getTimestamp("updated_at").toInstant()

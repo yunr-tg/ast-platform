@@ -88,6 +88,7 @@ public class RocketMqPumpConsumer implements SmartLifecycle {
             String taskType = node.path("taskType").asText();
             String workerGroup = node.path("workerGroup").asText();
             String traceId = node.path("traceId").asText();
+            int priority = node.has("priority") ? node.path("priority").asInt(5) : 5;
 
             // Link business traceId to MDC
             MDC.put("traceId", traceId);
@@ -97,7 +98,7 @@ public class RocketMqPumpConsumer implements SmartLifecycle {
                 return ConsumeResult.SUCCESS; // Skip invalid message
             }
 
-            pumpIngestApplicationService.acceptSubmittedTask(taskId, tenantId, taskType, workerGroup, traceId);
+            pumpIngestApplicationService.acceptSubmittedTask(taskId, tenantId, taskType, workerGroup, traceId, priority);
             return ConsumeResult.SUCCESS;
         } catch (Exception e) {
             log.error("Failed to process message from RocketMQ: {}", body, e);

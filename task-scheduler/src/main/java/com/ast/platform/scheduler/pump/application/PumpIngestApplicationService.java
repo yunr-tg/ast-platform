@@ -15,7 +15,7 @@ public class PumpIngestApplicationService {
         this.dispatchQueueRepository = dispatchQueueRepository;
     }
 
-    public void acceptSubmittedTask(String taskId, String tenantId, String taskType, String workerGroup, String traceId) {
-        dispatchQueueRepository.enqueueReady(new ReadyTaskEnvelope(taskId, tenantId, taskType, workerGroup, traceId, Instant.now()));
+    public void acceptSubmittedTask(String taskId, String tenantId, String taskType, String workerGroup, String traceId, int priority) {
+        dispatchQueueRepository.enqueueReady(new ReadyTaskEnvelope(taskId, tenantId, taskType, workerGroup, traceId, priority, Instant.now()));
     }
 }

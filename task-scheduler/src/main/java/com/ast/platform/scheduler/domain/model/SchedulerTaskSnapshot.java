@@ -13,6 +13,7 @@ public record SchedulerTaskSnapshot(
         String payload,
         String traceId,
         TaskStatus status,
+        int priority,
         int version,
         Instant updatedAt
 ) {

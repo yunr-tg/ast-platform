@@ -11,6 +11,7 @@ public record SubmitTaskRequest(
         String tag,
         String payload,
         String callbackUrl,
-        String traceId
+        String traceId,
+        Integer priority
 ) {
 }
