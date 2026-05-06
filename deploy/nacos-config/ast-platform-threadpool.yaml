@@ -1,0 +1,53 @@
+# AST Platform 线程池配置
+# 此文件应上传到Nacos Config，data-id: ast-platform-threadpool.yaml
+
+spring:
+  task:
+    execution:
+      pool:
+        core-size: ${TASK_POOL_CORE_SIZE:4}
+        max-size: ${TASK_POOL_MAX_SIZE:16}
+        queue-capacity: ${TASK_POOL_QUEUE_CAPACITY:100}
+        keep-alive: ${TASK_POOL_KEEP_ALIVE:60s}
+        allow-core-thread-timeout: true
+        thread-name-prefix: ast-async-
+      shutdown:
+        await-termination: true
+        await-termination-period: 30s
+
+ast:
+  thread-pool:
+    dispatcher:
+      core-size: ${DISPATCHER_POOL_CORE:2}
+      max-size: ${DISPATCHER_POOL_MAX:8}
+      queue-capacity: ${DISPATCHER_POOL_QUEUE:50}
+      thread-name-prefix: dispatcher-
+    pump:
+      core-size: ${PUMP_POOL_CORE:4}
+      max-size: ${PUMP_POOL_MAX:16}
+      queue-capacity: ${PUMP_POOL_QUEUE:100}
+      thread-name-prefix: pump-
+    callback:
+      core-size: ${CALLBACK_POOL_CORE:4}
+      max-size: ${CALLBACK_POOL_MAX:16}
+      queue-capacity: ${CALLBACK_POOL_QUEUE:100}
+      thread-name-prefix: callback-
+    notify:
+      core-size: ${NOTIFY_POOL_CORE:2}
+      max-size: ${NOTIFY_POOL_MAX:8}
+      queue-capacity: ${NOTIFY_POOL_QUEUE:50}
+      thread-name-prefix: notify-
+    compensator:
+      core-size: ${COMPENSATOR_POOL_CORE:1}
+      max-size: ${COMPENSATOR_POOL_MAX:4}
+      queue-capacity: ${COMPENSATOR_POOL_QUEUE:20}
+      thread-name-prefix: compensator-
+
+  scheduler:
+    dispatcher-enabled: ${DISPATCHER_ENABLED:true}
+    pump-enabled: ${PUMP_ENABLED:true}
+    dispatcher-fixed-delay-ms: ${DISPATCHER_DELAY:1000}
+    dispatcher-batch-size: ${DISPATCHER_BATCH:16}
+    retry-fixed-delay-ms: ${RETRY_DELAY:1000}
+    retry-batch-size: ${RETRY_BATCH:16}
+    local-queue-enabled: ${LOCAL_QUEUE:false}

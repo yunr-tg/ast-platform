@@ -1,6 +1,9 @@
 package com.ast.platform.gateway.application;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import io.micrometer.tracing.Tracer;
+import com.ast.platform.common.metrics.MetricNames;
 import com.ast.platform.contract.gateway.SubmitTaskRequest;
 import com.ast.platform.contract.gateway.SubmitTaskResponse;
 import com.ast.platform.domain.task.TaskPublishOutboxStatus;
@@ -31,23 +34,63 @@ public class TaskSubmissionApplicationService {
     private final GatewayProperties gatewayProperties;
     private final TransactionTemplate transactionTemplate;
     private final Tracer tracer;
+    private final MeterRegistry meterRegistry;
 
     public TaskSubmissionApplicationService(GatewayTaskRepository taskRepository,
                                             TaskPublishOutboxRepository outboxRepository,
                                             TaskMessagePublisher taskMessagePublisher,
                                             GatewayProperties gatewayProperties,
                                             TransactionTemplate transactionTemplate,
-                                            Tracer tracer) {
+                                            Tracer tracer,
+                                            MeterRegistry meterRegistry) {
         this.taskRepository = taskRepository;
         this.outboxRepository = outboxRepository;
         this.taskMessagePublisher = taskMessagePublisher;
         this.gatewayProperties = gatewayProperties;
         this.transactionTemplate = transactionTemplate;
         this.tracer = tracer;
+        this.meterRegistry = meterRegistry;
     }
 
     public SubmitTaskResponse submitTask(SubmitTaskRequest request) {
-        return doSubmitTask(request);
+        Timer.Sample sample = Timer.start(meterRegistry);
+        Instant startTime = Instant.now();
+        
+        try {
+            SubmitTaskResponse response = doSubmitTask(request);
+            recordSubmitMetrics(request, response, startTime, sample, null);
+            return response;
+        } catch (Exception e) {
+            recordSubmitMetrics(request, null, startTime, sample, e);
+            throw e;
+        }
+    }
+
+    private void recordSubmitMetrics(SubmitTaskRequest request, SubmitTaskResponse response, 
+                                     Instant startTime, Timer.Sample sample, Exception error) {
+        String[] tags = new String[]{
+            MetricNames.TAG_TENANT_ID, request.tenantId(),
+            MetricNames.TAG_TASK_TYPE, request.taskType()
+        };
+        
+        meterRegistry.counter(MetricNames.TASK_SUBMIT_TOTAL, tags).increment();
+        
+        if (error != null) {
+            meterRegistry.counter(MetricNames.TASK_SUBMIT_FAILURE,
+                MetricNames.TAG_TENANT_ID, request.tenantId(),
+                MetricNames.TAG_TASK_TYPE, request.taskType(),
+                MetricNames.TAG_ERROR_CODE, error.getClass().getSimpleName()
+            ).increment();
+        } else if (response != null) {
+            String statusTag = response.idempotent() ? "idempotent" : response.status().toLowerCase();
+            meterRegistry.counter(MetricNames.TASK_SUBMIT_SUCCESS,
+                MetricNames.TAG_TENANT_ID, request.tenantId(),
+                MetricNames.TAG_TASK_TYPE, request.taskType(),
+                MetricNames.TAG_STATUS, statusTag
+            ).increment();
+        }
+        
+        sample.stop(meterRegistry.timer(MetricNames.TASK_SUBMIT_DURATION, tags));
     }
 
     public void cancelTask(com.ast.platform.contract.gateway.CancelTaskRequest request) {
@@ -75,6 +118,11 @@ public class TaskSubmissionApplicationService {
             log.info("task cancelled, tenantId={}, taskId={}, reason={}",
                     request.tenantId(), request.taskId(), request.reason());
         });
+        
+        meterRegistry.counter(MetricNames.TASK_CANCEL_TOTAL,
+            MetricNames.TAG_TENANT_ID, request.tenantId()).increment();
+        meterRegistry.counter(MetricNames.TASK_CANCEL_SUCCESS,
+            MetricNames.TAG_TENANT_ID, request.tenantId()).increment();
     }
 
     private synchronized SubmitTaskResponse doSubmitTask(SubmitTaskRequest request) {
@@ -153,6 +201,7 @@ public class TaskSubmissionApplicationService {
         if (publishedCount < batchSize) {
             publishedCount += republishByStatus(TaskPublishOutboxStatus.FAILED, batchSize - publishedCount);
         }
+        meterRegistry.counter(MetricNames.OUTBOX_REPUBLISH_TOTAL).increment(publishedCount);
         return publishedCount;
     }
 
@@ -163,12 +212,20 @@ public class TaskSubmissionApplicationService {
             if (task == null) {
                 continue;
             }
-            // Use Micrometer Observation or just wrap in a new span
             tracer.nextSpan().name("republish").start();
             try {
                 PublishResult publishResult = publishIfNecessary(task, outbox);
                 if (publishResult.outbox().status() == TaskPublishOutboxStatus.SENT) {
                     publishedCount++;
+                    meterRegistry.counter(MetricNames.OUTBOX_PUBLISH_SUCCESS,
+                        MetricNames.TAG_TENANT_ID, task.tenantId(),
+                        MetricNames.TAG_TASK_TYPE, task.taskType()
+                    ).increment();
+                } else {
+                    meterRegistry.counter(MetricNames.OUTBOX_PUBLISH_FAILURE,
+                        MetricNames.TAG_TENANT_ID, task.tenantId(),
+                        MetricNames.TAG_TASK_TYPE, task.taskType()
+                    ).increment();
                 }
             } finally {
                 if (tracer.currentSpan() != null) {

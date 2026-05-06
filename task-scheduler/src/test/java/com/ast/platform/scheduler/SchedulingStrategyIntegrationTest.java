@@ -190,6 +190,6 @@ class SchedulingStrategyIntegrationTest {
                 taskId, "tenant-1", "type-1", "biz-" + taskId, "req-" + taskId, "group-1", "default", "{}",
                 null, "trace-" + taskId, TaskStatus.QUEUED.name(), 0, Timestamp.from(now), Timestamp.from(now));
         
-        pumpIngestApplicationService.acceptSubmittedTask(taskId, "tenant-1", "type-1", "group-1", "trace-" + taskId);
+        pumpIngestApplicationService.acceptSubmittedTask(taskId, "tenant-1", "type-1", "group-1", "trace-" + taskId, 5);
     }
 }

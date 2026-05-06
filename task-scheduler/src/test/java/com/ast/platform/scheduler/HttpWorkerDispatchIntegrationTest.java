@@ -57,7 +57,7 @@ class HttpWorkerDispatchIntegrationTest {
         workerRegistrationApplicationService.registerWorker(new WorkerRegisterRequest(
                 "worker-http", "render-group", "127.0.0.1", 19091, "http", "1.0.0", List.of("render-task"), List.of("default"), 4, 100));
         
-        pumpIngestApplicationService.acceptSubmittedTask("task-http-1", "tenant-a", "render-task", "render-group", "trace-1");
+        pumpIngestApplicationService.acceptSubmittedTask("task-http-1", "tenant-a", "render-task", "render-group", "trace-1", 5);
 
         // Mock the HTTP response from Worker SDK
         stubFor(post(urlEqualTo("/worker/dispatch"))

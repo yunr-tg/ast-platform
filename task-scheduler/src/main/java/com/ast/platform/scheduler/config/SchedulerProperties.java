@@ -2,11 +2,13 @@ package com.ast.platform.scheduler.config;
 
 import com.ast.platform.domain.task.SchedulingStrategy;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @ConfigurationProperties(prefix = "ast.scheduler")
+@RefreshScope
 public class SchedulerProperties {
 
     private boolean localQueueEnabled = true;

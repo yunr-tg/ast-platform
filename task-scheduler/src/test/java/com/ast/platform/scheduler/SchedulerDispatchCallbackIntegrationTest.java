@@ -50,7 +50,7 @@ class SchedulerDispatchCallbackIntegrationTest {
 
         workerRegistrationApplicationService.registerWorker(new WorkerRegisterRequest(
                 "worker-a", "render-group", "127.0.0.1", 19091, "http", "1.0.0", List.of("render-task"), List.of("default"), 4, 100));
-        pumpIngestApplicationService.acceptSubmittedTask("task-1", "tenant-a", "render-task", "render-group", "trace-1");
+        pumpIngestApplicationService.acceptSubmittedTask("task-1", "tenant-a", "render-task", "render-group", "trace-1", 5);
 
         assertThat(dispatcherApplicationService.dispatchNext()).isTrue();
         assertThat(schedulerTaskRepository.findByTaskId("task-1").orElseThrow().status()).isEqualTo(TaskStatus.DISPATCHED);

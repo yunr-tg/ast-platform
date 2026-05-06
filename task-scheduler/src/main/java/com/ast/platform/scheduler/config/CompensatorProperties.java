@@ -1,8 +1,10 @@
 package com.ast.platform.scheduler.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 
 @ConfigurationProperties(prefix = "ast.scheduler.compensator")
+@RefreshScope
 public class CompensatorProperties {
 
     private boolean enabled;

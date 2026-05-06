@@ -11,6 +11,7 @@ create table if not exists gateway_task (
     trace_id varchar(64) not null,
     status varchar(32) not null,
     priority int not null default 5,
+    progress int not null default 0,
     version int not null,
     created_at timestamp(3) not null,
     updated_at timestamp(3) not null,

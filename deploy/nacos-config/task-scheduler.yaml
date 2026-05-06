@@ -1,0 +1,58 @@
+# task-scheduler 专属配置
+# 此文件应上传到Nacos Config，data-id: task-scheduler.yaml
+
+server:
+  port: ${SCHEDULER_PORT:8081}
+  tomcat:
+    threads:
+      max: ${SCHEDULER_TOMCAT_MAX_THREADS:100}
+      min-spare: ${SCHEDULER_TOMCAT_MIN_THREADS:5}
+    accept-count: ${SCHEDULER_TOMCAT_ACCEPT_COUNT:50}
+    max-connections: ${SCHEDULER_TOMCAT_MAX_CONN:5000}
+    connection-timeout: ${SCHEDULER_TOMCAT_CONN_TIMEOUT:5000}
+
+spring:
+  datasource:
+    hikari:
+      pool-name: Scheduler-HikariPool
+      maximum-pool-size: ${SCHEDULER_DB_POOL_MAX:20}
+      minimum-idle: ${SCHEDULER_DB_POOL_MIN:5}
+
+ast:
+  scheduler:
+    local-queue-enabled: ${SCHEDULER_LOCAL_QUEUE:false}
+    dispatcher-enabled: ${SCHEDULER_DISPATCHER:true}
+    pump-enabled: ${SCHEDULER_PUMP:true}
+    dispatcher-fixed-delay-ms: ${SCHEDULER_DISPATCHER_DELAY:1000}
+    dispatcher-batch-size: ${SCHEDULER_DISPATCHER_BATCH:16}
+    retry-fixed-delay-ms: ${SCHEDULER_RETRY_DELAY:1000}
+    retry-batch-size: ${SCHEDULER_RETRY_BATCH:16}
+    strategy: ${SCHEDULER_STRATEGY:LEAST_LOADED}
+    
+    callback:
+      enabled: ${SCHEDULER_CALLBACK:true}
+      dispatch-token-ttl-seconds: ${SCHEDULER_TOKEN_TTL:3600}
+      
+    notify:
+      enabled: ${SCHEDULER_NOTIFY:true}
+      fixed-delay-ms: ${SCHEDULER_NOTIFY_DELAY:5000}
+      batch-size: ${SCHEDULER_NOTIFY_BATCH:16}
+      http-timeout-ms: ${SCHEDULER_NOTIFY_HTTP_TIMEOUT:5000}
+      max-retry-count: ${SCHEDULER_NOTIFY_MAX_RETRY:5}
+      dead-letter-enabled: ${SCHEDULER_NOTIFY_DEAD_LETTER:true}
+      
+    compensator:
+      enabled: ${SCHEDULER_COMPENSATOR:true}
+      fixed-delay-ms: ${SCHEDULER_COMPENSATOR_DELAY:30000}
+      batch-size: ${SCHEDULER_COMPENSATOR_BATCH:100}
+      dispatch-timeout-ms: ${SCHEDULER_COMPENSATOR_DISPATCH_TIMEOUT:300000}
+      execution-timeout-ms: ${SCHEDULER_COMPENSATOR_EXEC_TIMEOUT:600000}
+      running-timeout-ms: ${SCHEDULER_COMPENSATOR_RUNNING_TIMEOUT:7200000}
+      max-reclaim-count: ${SCHEDULER_COMPENSATOR_MAX_RECLAIM:3}
+
+  worker:
+    heartbeat-interval-ms: ${WORKER_HEARTBEAT_INTERVAL:5000}
+    heartbeat-timeout-seconds: ${WORKER_HEARTBEAT_TIMEOUT:30}
+    max-concurrent-tasks-per-worker: ${WORKER_MAX_CONCURRENT:10}
+    degraded-threshold-error-rate: ${WORKER_DEGRADED_THRESHOLD:0.3}
+    blocked-threshold-error-rate: ${WORKER_BLOCKED_THRESHOLD:0.5}

@@ -1,13 +1,45 @@
 spring:
   application:
     name: task-gateway
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   cloud:
     nacos:
       config:
         server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
         file-extension: yaml
         group: DEFAULT_GROUP
+        namespace: ${NACOS_NAMESPACE:}
         refresh-enabled: true
+        max-retry: ${NACOS_MAX_RETRY:3}
+        config-retry-time: ${NACOS_RETRY_TIME:3000}
+        config-long-poll-timeout: ${NACOS_POLL_TIMEOUT:30000}
         shared-configs:
           - data-id: ast-platform-common.yaml
+            group: DEFAULT_GROUP
+            refresh: true
+          - data-id: ast-platform-datasource.yaml
+            group: DEFAULT_GROUP
+            refresh: true
+          - data-id: ast-platform-redis.yaml
+            group: DEFAULT_GROUP
+            refresh: true
+          - data-id: ast-platform-rocketmq.yaml
+            group: DEFAULT_GROUP
+            refresh: true
+          - data-id: ast-platform-threadpool.yaml
+            group: DEFAULT_GROUP
+            refresh: true
+          - data-id: ast-platform-retry.yaml
+            group: DEFAULT_GROUP
+            refresh: true
+          - data-id: ast-platform-observability.yaml
+            group: DEFAULT_GROUP
+            refresh: true
+        extension-configs:
+          - data-id: ${spring.application.name}.yaml
+            group: DEFAULT_GROUP
+            refresh: true
+          - data-id: ${spring.application.name}-${spring.profiles.active}.yaml
+            group: DEFAULT_GROUP
             refresh: true

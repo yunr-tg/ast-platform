@@ -62,7 +62,7 @@ class LeastLoadedDispatchIntegrationTest {
                 "task-ll-1", "tenant-a", "render", "biz-1", "req-1", "render-group", "default", "{}",
                 "http://cb", "trace-ll", TaskStatus.QUEUED.name(), 0, Timestamp.from(now), Timestamp.from(now));
         
-        pumpIngestApplicationService.acceptSubmittedTask("task-ll-1", "tenant-a", "render", "render-group", "trace-ll");
+        pumpIngestApplicationService.acceptSubmittedTask("task-ll-1", "tenant-a", "render", "render-group", "trace-ll", 5);
 
         // 3. Dispatch
         boolean dispatched = dispatcherApplicationService.dispatchNext();
@@ -89,7 +89,7 @@ class LeastLoadedDispatchIntegrationTest {
                 "task-ll-2", "tenant-a", "render", "biz-2", "req-2", "render-group", "default", "{}",
                 "http://cb", "trace-ll-2", TaskStatus.QUEUED.name(), 0, Timestamp.from(now), Timestamp.from(now));
         
-        pumpIngestApplicationService.acceptSubmittedTask("task-ll-2", "tenant-a", "render", "render-group", "trace-ll-2");
+        pumpIngestApplicationService.acceptSubmittedTask("task-ll-2", "tenant-a", "render", "render-group", "trace-ll-2", 5);
 
         boolean dispatched = dispatcherApplicationService.dispatchNext();
         assertThat(dispatched).isTrue();
@@ -114,7 +114,7 @@ class LeastLoadedDispatchIntegrationTest {
                 "task-ll-3", "tenant-a", "render", "biz-3", "req-3", "render-group", "default", "{}",
                 "http://cb", "trace-ll-3", TaskStatus.QUEUED.name(), 0, Timestamp.from(now), Timestamp.from(now));
         
-        pumpIngestApplicationService.acceptSubmittedTask("task-ll-3", "tenant-a", "render", "render-group", "trace-ll-3");
+        pumpIngestApplicationService.acceptSubmittedTask("task-ll-3", "tenant-a", "render", "render-group", "trace-ll-3", 5);
 
         boolean dispatched = dispatcherApplicationService.dispatchNext();
         assertThat(dispatched).isTrue();

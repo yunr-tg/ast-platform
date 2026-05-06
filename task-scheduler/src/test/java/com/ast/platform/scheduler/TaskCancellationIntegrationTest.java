@@ -45,7 +45,7 @@ class TaskCancellationIntegrationTest {
                 "worker-cancel", "render-group", "127.0.0.1", 19091, "http", "1.0.0", List.of("render-task"), List.of("default"), 4, 100));
 
         // 3. Move task to Redis queue (Pump simulates it being in MQ)
-        pumpIngestApplicationService.acceptSubmittedTask("task-cancel-1", "tenant-a", "render-task", "render-group", "trace-cancel-1");
+        pumpIngestApplicationService.acceptSubmittedTask("task-cancel-1", "tenant-a", "render-task", "render-group", "trace-cancel-1", 5);
 
         // 4. Try to dispatch. Dispatcher should check DB, see CANCELLED, and skip it.
         boolean dispatched = dispatcherApplicationService.dispatchNext();

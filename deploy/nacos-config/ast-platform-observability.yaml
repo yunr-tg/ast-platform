@@ -1,0 +1,97 @@
+# AST Platform 监控与健康检查配置
+# 此文件应上传到Nacos Config，data-id: ast-platform-observability.yaml
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,env,loggers,caches
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: ping,livenessState
+        readiness:
+          include: ping,readinessState,db,redis
+    prometheus:
+      enabled: true
+    metrics:
+      enabled: true
+    env:
+      show-values: never
+    loggers:
+      enabled: true
+  health:
+    db:
+      enabled: true
+    redis:
+      enabled: true
+    diskspace:
+      enabled: true
+      threshold: 10MB
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+    propagation:
+      type: b3
+  observation:
+    key-values:
+      application: ${spring.application.name}
+    enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: ${SPRING_PROFILES_ACTIVE:dev}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        http.client.requests: true
+      percentiles:
+        http.server.requests: 0.5,0.9,0.95,0.99
+        http.client.requests: 0.5,0.9,0.95,0.99
+      slo:
+        http.server.requests: 100ms,200ms,500ms,1s,2s
+        http.client.requests: 100ms,200ms,500ms,1s
+    enable:
+      jvm: true
+      process: true
+      system: true
+      tomcat: true
+      logback: true
+      hikaricp: true
+      executor: true
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+  file:
+    name: ${LOG_PATH:/var/log/ast-platform}/${spring.application.name}.log
+    max-size: ${LOG_MAX_SIZE:100MB}
+    max-history: ${LOG_MAX_HISTORY:30}
+    total-size-cap: ${LOG_TOTAL_SIZE_CAP:10GB}
+  logback:
+    rollingpolicy:
+      max-file-size: ${LOG_MAX_SIZE:100MB}
+      max-history: ${LOG_MAX_HISTORY:30}
+      clean-history-on-start: true
+
+otel:
+  traces:
+    exporter: ${OTEL_TRACES_EXPORTER:otlp}
+  metrics:
+    exporter: ${OTEL_METRICS_EXPORTER:otlp}
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
+      timeout: ${OTEL_EXPORTER_TIMEOUT:10s}
+
+ast:
+  metrics:
+    enabled: ${METRICS_ENABLED:true}
+    redis-queue-scan-interval-ms: ${METRICS_REDIS_SCAN_INTERVAL:5000}
+    rocketmq-scan-interval-ms: ${METRICS_RMQ_SCAN_INTERVAL:10000}
+    worker-heartbeat-check-interval-ms: ${METRICS_WORKER_CHECK_INTERVAL:30000}

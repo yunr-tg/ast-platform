@@ -1,0 +1,69 @@
+# AST Platform 公共配置
+# 此文件应上传到Nacos Config，data-id: ast-platform-common.yaml
+
+server:
+  shutdown: graceful
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+  error:
+    include-message: always
+    include-binding-errors: always
+
+spring:
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+      fail-on-empty-beans: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+  mvc:
+    throw-exception-if-no-handler-found: true
+  servlet:
+    multipart:
+      max-file-size: ${MAX_FILE_SIZE:10MB}
+      max-request-size: ${MAX_REQUEST_SIZE:10MB}
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.ast.platform: ${LOG_LEVEL_APP:INFO}
+    org.springframework.web: ${LOG_LEVEL_WEB:WARN}
+    org.springframework.data: ${LOG_LEVEL_DATA:WARN}
+    com.alibaba.nacos: ${LOG_LEVEL_NACOS:WARN}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  tracing:
+    sampling:
+      probability: 1.0
+  observation:
+    key-values:
+      application: ${spring.application.name}
+
+feign:
+  client:
+    config:
+      default:
+        connect-timeout: ${FEIGN_CONNECT_TIMEOUT:5000}
+        read-timeout: ${FEIGN_READ_TIMEOUT:30000}
+        logger-level: BASIC
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: ${CIRCUIT_BREAKER_WINDOW:10}
+        failure-rate-threshold: ${CIRCUIT_BREAKER_FAILURE_RATE:50}
+        wait-duration-in-open-state: ${CIRCUIT_BREAKER_WAIT:10s}
+        permitted-number-of-calls-in-half-open-state: 3
+        slow-call-rate-threshold: ${CIRCUIT_BREAKER_SLOW_RATE:100}
+        slow-call-duration-threshold: ${CIRCUIT_BREAKER_SLOW_THRESHOLD:2s}

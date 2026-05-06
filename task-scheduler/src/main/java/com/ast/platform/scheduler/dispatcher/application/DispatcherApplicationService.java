@@ -1,5 +1,6 @@
 package com.ast.platform.scheduler.dispatcher.application;
 
+import com.ast.platform.common.metrics.MetricNames;
 import com.ast.platform.domain.task.SchedulingStrategy;
 import com.ast.platform.domain.task.TaskStatus;
 import com.ast.platform.scheduler.config.SchedulerProperties;
@@ -15,6 +16,8 @@ import com.ast.platform.scheduler.domain.repository.SchedulerTaskRepository;
 import com.ast.platform.scheduler.domain.repository.WorkerRuntimeRepository;
 import com.ast.platform.scheduler.domain.service.WorkerSelector;
 import com.ast.platform.scheduler.infrastructure.selector.*;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 import org.slf4j.Logger;
@@ -22,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +44,7 @@ public class DispatcherApplicationService {
     private final SchedulerProperties schedulerProperties;
     private final SchedulingStrategyResolver strategyResolver;
     private final Tracer tracer;
+    private final MeterRegistry meterRegistry;
     
     private final LeastLoadedWorkerSelector leastLoadedSelector;
     private final RandomWorkerSelector randomSelector;
@@ -59,6 +64,7 @@ public class DispatcherApplicationService {
                                         SchedulerProperties schedulerProperties,
                                         SchedulingStrategyResolver strategyResolver,
                                         Tracer tracer,
+                                        MeterRegistry meterRegistry,
                                         LeastLoadedWorkerSelector leastLoadedSelector,
                                         RandomWorkerSelector randomSelector,
                                         RoundRobinWorkerSelector roundRobinSelector,
@@ -76,6 +82,7 @@ public class DispatcherApplicationService {
         this.schedulerProperties = schedulerProperties;
         this.strategyResolver = strategyResolver;
         this.tracer = tracer;
+        this.meterRegistry = meterRegistry;
         this.leastLoadedSelector = leastLoadedSelector;
         this.randomSelector = randomSelector;
         this.roundRobinSelector = roundRobinSelector;
@@ -94,17 +101,42 @@ public class DispatcherApplicationService {
         }
 
         ReadyTaskEnvelope envelope = nextTask.get();
-        // Start a new span for dispatching. 
-        // We link it via MDC for now, as full context propagation across Redis is not yet standard in P0.
         Span span = tracer.nextSpan().name("dispatch").start();
+        Timer.Sample sample = Timer.start(meterRegistry);
+        Instant startTime = Instant.now();
+        
         try (Tracer.SpanInScope ws = tracer.withSpan(span)) {
-            // For logging consistency, we ensure MDC has the business traceId from the envelope
             MDC.put("traceId", envelope.traceId());
-            return doDispatch(envelope);
+            boolean result = doDispatch(envelope);
+            recordDispatchMetrics(envelope, result, startTime, sample);
+            return result;
         } finally {
             span.end();
             MDC.remove("traceId");
         }
+    }
+
+    private void recordDispatchMetrics(ReadyTaskEnvelope envelope, boolean success, 
+                                       Instant startTime, Timer.Sample sample) {
+        String[] tags = new String[]{
+            MetricNames.TAG_TENANT_ID, envelope.tenantId(),
+            MetricNames.TAG_TASK_TYPE, envelope.taskType(),
+            MetricNames.TAG_WORKER_GROUP, envelope.workerGroup()
+        };
+        
+        meterRegistry.counter(MetricNames.TASK_DISPATCH_TOTAL, tags).increment();
+        
+        if (success) {
+            meterRegistry.counter(MetricNames.TASK_DISPATCH_SUCCESS, tags).increment();
+        } else {
+            meterRegistry.counter(MetricNames.TASK_DISPATCH_FAILURE, tags).increment();
+        }
+        
+        sample.stop(meterRegistry.timer(MetricNames.TASK_DISPATCH_DURATION, tags));
+        
+        Duration delay = Duration.between(envelope.enqueuedAt(), startTime);
+        meterRegistry.timer(MetricNames.TASK_DISPATCH_DELAY, tags)
+            .record(delay.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
     }
 
     private boolean doDispatch(ReadyTaskEnvelope envelope) {

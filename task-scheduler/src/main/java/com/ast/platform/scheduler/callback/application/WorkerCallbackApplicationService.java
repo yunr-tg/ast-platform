@@ -2,6 +2,7 @@ package com.ast.platform.scheduler.callback.application;
 
 import com.ast.platform.common.exception.BusinessException;
 import com.ast.platform.common.exception.ErrorCode;
+import com.ast.platform.common.metrics.MetricNames;
 import com.ast.platform.contract.worker.WorkerCallbackRequest;
 import com.ast.platform.domain.task.TaskProgressRepository;
 import com.ast.platform.domain.task.TaskStateMachine;
@@ -15,6 +16,7 @@ import com.ast.platform.scheduler.domain.repository.DispatchQueueRepository;
 import com.ast.platform.scheduler.domain.repository.DispatchRecordRepository;
 import com.ast.platform.scheduler.domain.repository.NotifyOutboxRepository;
 import com.ast.platform.scheduler.domain.repository.SchedulerTaskRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,19 +35,22 @@ public class WorkerCallbackApplicationService {
     private final NotifyOutboxRepository notifyOutboxRepository;
     private final TaskProgressRepository taskProgressRepository;
     private final SchedulerProperties schedulerProperties;
+    private final MeterRegistry meterRegistry;
 
     public WorkerCallbackApplicationService(SchedulerTaskRepository schedulerTaskRepository,
                                             DispatchRecordRepository dispatchRecordRepository,
                                             DispatchQueueRepository dispatchQueueRepository,
                                             NotifyOutboxRepository notifyOutboxRepository,
                                             TaskProgressRepository taskProgressRepository,
-                                            SchedulerProperties schedulerProperties) {
+                                            SchedulerProperties schedulerProperties,
+                                            MeterRegistry meterRegistry) {
         this.schedulerTaskRepository = schedulerTaskRepository;
         this.dispatchRecordRepository = dispatchRecordRepository;
         this.dispatchQueueRepository = dispatchQueueRepository;
         this.notifyOutboxRepository = notifyOutboxRepository;
         this.taskProgressRepository = taskProgressRepository;
         this.schedulerProperties = schedulerProperties;
+        this.meterRegistry = meterRegistry;
     }
 
     public void acceptCallback(WorkerCallbackRequest request) {
@@ -57,28 +62,51 @@ public class WorkerCallbackApplicationService {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Dispatch token mismatch: " + request.taskId());
         }
 
+        meterRegistry.counter(MetricNames.TASK_CALLBACK_TOTAL,
+            MetricNames.TAG_TENANT_ID, task.tenantId(),
+            MetricNames.TAG_TASK_TYPE, task.taskType(),
+            MetricNames.TAG_WORKER_ID, request.workerId()
+        ).increment();
+
         TaskStatus targetStatus = request.targetStatus();
         if (request.retryable() && targetStatus == TaskStatus.FAILED) {
             if (dispatchRecord.retryCount() >= schedulerProperties.getCallback().getMaxRetryCount()) {
                 log.warn("Task exceeded max retry count, moving to DEAD_LETTER: {}", request.taskId());
                 targetStatus = TaskStatus.DEAD_LETTER;
+                meterRegistry.counter(MetricNames.TASK_DEAD_LETTER_TOTAL,
+                    MetricNames.TAG_TENANT_ID, task.tenantId(),
+                    MetricNames.TAG_TASK_TYPE, task.taskType()
+                ).increment();
             } else {
                 targetStatus = TaskStatus.RETRY_WAIT;
+                meterRegistry.counter(MetricNames.TASK_RETRY_TOTAL,
+                    MetricNames.TAG_TENANT_ID, task.tenantId(),
+                    MetricNames.TAG_TASK_TYPE, task.taskType()
+                ).increment();
             }
         }
         
         TaskStateMachine.requireTransition(task.status(), targetStatus);
         
         if (task.status() == targetStatus) {
+            meterRegistry.counter(MetricNames.TASK_CALLBACK_SUCCESS,
+                MetricNames.TAG_TENANT_ID, task.tenantId(),
+                MetricNames.TAG_TASK_TYPE, task.taskType(),
+                MetricNames.TAG_STATUS, "idempotent"
+            ).increment();
             return;
         }
         if (!schedulerTaskRepository.advanceStatus(task.taskId(), task.status(), targetStatus)) {
+            meterRegistry.counter(MetricNames.TASK_CALLBACK_FAILURE,
+                MetricNames.TAG_TENANT_ID, task.tenantId(),
+                MetricNames.TAG_TASK_TYPE, task.taskType(),
+                MetricNames.TAG_ERROR_CODE, "optimistic_lock_conflict"
+            ).increment();
             throw new BusinessException(ErrorCode.OPTIMISTIC_LOCK_CONFLICT, "Task state update conflict: " + task.taskId());
         }
 
         Instant now = Instant.now();
         
-        // Sync progress to MySQL on terminal state
         if (targetStatus == TaskStatus.SUCCESS || targetStatus == TaskStatus.FAILED || targetStatus == TaskStatus.DEAD_LETTER) {
             int finalPercentage = (targetStatus == TaskStatus.SUCCESS) ? 100 : 
                 taskProgressRepository.getLatestProgress(task.taskId()).map(p -> p.percentage()).orElse(0);
@@ -91,6 +119,11 @@ public class WorkerCallbackApplicationService {
                     dispatchRecord.retryCount() + 1, nextRetryTime, request.errorMessage(), request.resultPayload(), now));
             dispatchQueueRepository.enqueueRetry(new ReadyTaskEnvelope(task.taskId(), task.tenantId(), task.taskType(), task.workerGroup(), task.traceId(), task.priority(), now), nextRetryTime);
             log.info("callback accepted with retry, taskId={}, nextRetryTime={}", task.taskId(), nextRetryTime);
+            meterRegistry.counter(MetricNames.TASK_CALLBACK_SUCCESS,
+                MetricNames.TAG_TENANT_ID, task.tenantId(),
+                MetricNames.TAG_TASK_TYPE, task.taskType(),
+                MetricNames.TAG_STATUS, "retry_scheduled"
+            ).increment();
             return;
         }
 
@@ -102,6 +135,11 @@ public class WorkerCallbackApplicationService {
                     "NEW", task.traceId(), 0, null, null, now, now));
         }
         log.info("callback accepted, taskId={}, targetStatus={}", task.taskId(), targetStatus);
+        meterRegistry.counter(MetricNames.TASK_CALLBACK_SUCCESS,
+            MetricNames.TAG_TENANT_ID, task.tenantId(),
+            MetricNames.TAG_TASK_TYPE, task.taskType(),
+            MetricNames.TAG_STATUS, targetStatus.name().toLowerCase()
+        ).increment();
     }
 
     private String buildNotifyPayload(String taskId, TaskStatus targetStatus, String resultPayload, String errorMessage) {

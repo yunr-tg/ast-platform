@@ -1,0 +1,25 @@
+# task-gateway 开发环境配置
+# 此文件应上传到Nacos Config，data-id: task-gateway-dev.yaml
+
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:ast_gateway;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
+    username: sa
+    password:
+
+logging:
+  level:
+    root: INFO
+    com.ast.platform: DEBUG
+    org.springframework.web: DEBUG
+
+ast:
+  gateway:
+    mock-send-success: true
+    outbox-republish-fixed-delay-ms: 5000
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Component
 public class WorkerLifecycleManager implements SmartLifecycle {
@@ -34,6 +35,7 @@ public class WorkerLifecycleManager implements SmartLifecycle {
     });
 
     private volatile boolean running = false;
+    private final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
 
     public WorkerLifecycleManager(WorkerSdkProperties properties,
                                   WorkerControlPlaneClient client,
@@ -55,7 +57,6 @@ public class WorkerLifecycleManager implements SmartLifecycle {
             log.info("Worker Lifecycle Manager started successfully, workerId={}", properties.getWorkerId());
         } catch (Exception e) {
             log.error("Failed to start Worker Lifecycle Manager", e);
-            // In P0, we might want to fail the whole application if registration fails
         }
     }
 
@@ -69,9 +70,9 @@ public class WorkerLifecycleManager implements SmartLifecycle {
                 properties.getProtocol(),
                 properties.getVersion(),
                 taskTypes,
-                List.of("default"), // P0 default tag
+                List.of("default"),
                 properties.getMaxConcurrency(),
-                100 // Default weight
+                100
         );
         client.registerWorker(request);
         log.info("Worker registered to control plane: {}", request);
@@ -87,57 +88,135 @@ public class WorkerLifecycleManager implements SmartLifecycle {
     private void sendHeartbeat() {
         try {
             List<String> taskTypes = handlers.stream().map(TaskExecutionHandler::taskType).toList();
+            WorkerStatus status = determineStatus();
+            
             WorkerHeartbeatRequest request = new WorkerHeartbeatRequest(
                     properties.getWorkerId(),
                     properties.getWorkerGroup(),
                     taskTypes,
-                    WorkerStatus.UP,
+                    status,
                     runtimeManager.getActiveTaskCount(),
                     runtimeManager.getMaxConcurrency(),
                     runtimeManager.getAvailableSlots(),
-                    0, // avgRt P0
-                    0, // errorRate P0
-                    0.0, // cpuUsage P0
-                    0.0  // memoryUsage P0
+                    0,
+                    0,
+                    0.0,
+                    0.0
             );
             client.reportHeartbeat(request);
-            log.debug("Heartbeat sent: {}", request);
+            log.debug("Heartbeat sent: status={}, activeTasks={}", status, runtimeManager.getActiveTaskCount());
         } catch (Exception e) {
             log.warn("Failed to send heartbeat: {}", e.getMessage());
         }
     }
 
+    private WorkerStatus determineStatus() {
+        if (shutdownRequested.get() || runtimeManager.isDraining()) {
+            return WorkerStatus.DRAINING;
+        }
+        return WorkerStatus.UP;
+    }
+
     @Override
     public void stop() {
         log.info("Stopping Worker Lifecycle Manager...");
+        
+        if (properties.isGracefulShutdownEnabled()) {
+            performGracefulShutdown();
+        } else {
+            performImmediateShutdown();
+        }
+        
+        running = false;
+        log.info("Worker Lifecycle Manager stopped");
+    }
+
+    private void performGracefulShutdown() {
+        log.info("Initiating graceful shutdown, timeout={}s", properties.getGracefulShutdownTimeoutSeconds());
+        
+        shutdownRequested.set(true);
+        runtimeManager.startDraining();
+        
+        reportStatus(WorkerStatus.DRAINING);
+        
+        try {
+            boolean completed = runtimeManager.awaitDrainCompletion(
+                    properties.getGracefulShutdownTimeoutSeconds(), 
+                    TimeUnit.SECONDS);
+            
+            if (!completed) {
+                log.warn("Graceful shutdown timeout, forcing completion");
+                runtimeManager.forceComplete();
+            }
+        } catch (InterruptedException e) {
+            log.warn("Graceful shutdown interrupted");
+            Thread.currentThread().interrupt();
+        }
+        
         scheduler.shutdown();
         try {
             if (!scheduler.awaitTermination(2, TimeUnit.SECONDS)) {
                 scheduler.shutdownNow();
             }
-            // Report DOWN status on shutdown
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        
+        reportStatus(WorkerStatus.DOWN);
+        log.info("Graceful shutdown completed");
+    }
+
+    private void performImmediateShutdown() {
+        log.info("Performing immediate shutdown");
+        
+        scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(2, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        
+        reportStatus(WorkerStatus.DOWN);
+    }
+
+    private void reportStatus(WorkerStatus status) {
+        try {
             List<String> taskTypes = handlers.stream().map(TaskExecutionHandler::taskType).toList();
             WorkerHeartbeatRequest request = new WorkerHeartbeatRequest(
                     properties.getWorkerId(),
                     properties.getWorkerGroup(),
                     taskTypes,
-                    WorkerStatus.DOWN,
-                    0,
+                    status,
+                    runtimeManager.getActiveTaskCount(),
                     runtimeManager.getMaxConcurrency(),
-                    0,
+                    runtimeManager.getAvailableSlots(),
                     0, 0,
                     0.0, 0.0
             );
             client.reportHeartbeat(request);
-            log.info("Worker reported DOWN status on shutdown");
+            log.info("Worker status reported: {} (activeTasks={})", status, runtimeManager.getActiveTaskCount());
         } catch (Exception e) {
-            log.warn("Error during worker shutdown report: {}", e.getMessage());
+            log.warn("Failed to report status {}: {}", status, e.getMessage());
         }
-        running = false;
     }
 
     @Override
     public boolean isRunning() {
         return running;
+    }
+    
+    @Override
+    public int getPhase() {
+        return Integer.MAX_VALUE;
+    }
+    
+    @Override
+    public void stop(Runnable callback) {
+        stop();
+        callback.run();
     }
 }

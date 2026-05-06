@@ -1,8 +1,10 @@
 package com.ast.platform.gateway.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 
 @ConfigurationProperties(prefix = "ast.gateway.rocketmq")
+@RefreshScope
 public class GatewayRocketMqProperties {
 
     private boolean enabled;

@@ -14,6 +14,10 @@ public class WorkerSdkProperties {
     private String version = "1.0.0";
     private int maxConcurrency = 10;
     private int heartbeatIntervalMs = 5000;
+    
+    private int gracefulShutdownTimeoutSeconds = 30;
+    private int drainingPollIntervalMs = 1000;
+    private boolean gracefulShutdownEnabled = true;
 
     public String getSchedulerBaseUrl() {
         return schedulerBaseUrl;
@@ -85,5 +89,29 @@ public class WorkerSdkProperties {
 
     public void setHeartbeatIntervalMs(int heartbeatIntervalMs) {
         this.heartbeatIntervalMs = heartbeatIntervalMs;
+    }
+
+    public int getGracefulShutdownTimeoutSeconds() {
+        return gracefulShutdownTimeoutSeconds;
+    }
+
+    public void setGracefulShutdownTimeoutSeconds(int gracefulShutdownTimeoutSeconds) {
+        this.gracefulShutdownTimeoutSeconds = gracefulShutdownTimeoutSeconds;
+    }
+
+    public int getDrainingPollIntervalMs() {
+        return drainingPollIntervalMs;
+    }
+
+    public void setDrainingPollIntervalMs(int drainingPollIntervalMs) {
+        this.drainingPollIntervalMs = drainingPollIntervalMs;
+    }
+
+    public boolean isGracefulShutdownEnabled() {
+        return gracefulShutdownEnabled;
+    }
+
+    public void setGracefulShutdownEnabled(boolean gracefulShutdownEnabled) {
+        this.gracefulShutdownEnabled = gracefulShutdownEnabled;
     }
 }

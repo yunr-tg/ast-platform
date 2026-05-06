@@ -36,7 +36,8 @@ class TaskSubmissionFailureTest {
                 "default",
                 "{\"id\":1}",
                 "http://callback.test/failure",
-                "trace-f-1"
+                "trace-f-1",
+                5
         ));
 
         assertThat(response.status()).isEqualTo(TaskStatus.INIT.name());

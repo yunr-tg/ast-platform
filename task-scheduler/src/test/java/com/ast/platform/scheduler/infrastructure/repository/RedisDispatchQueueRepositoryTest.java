@@ -49,7 +49,7 @@ class RedisDispatchQueueRepositoryTest {
 
     @Test
     void testEnqueueReady() throws Exception {
-        ReadyTaskEnvelope envelope = new ReadyTaskEnvelope("task-1", "tenant-1", "type-1", "group-1", "trace-1", Instant.now());
+        ReadyTaskEnvelope envelope = new ReadyTaskEnvelope("task-1", "tenant-1", "type-1", "group-1", "trace-1", 5, Instant.now());
         
         when(setOps.add(anyString(), anyString())).thenReturn(1L);
 
@@ -63,10 +63,9 @@ class RedisDispatchQueueRepositoryTest {
     @Test
     @SuppressWarnings("unchecked")
     void testPollNextReadyTask_Success() throws Exception {
-        ReadyTaskEnvelope envelope = new ReadyTaskEnvelope("task-1", "tenant-1", "type-1", "group-1", "trace-1", Instant.now());
+        ReadyTaskEnvelope envelope = new ReadyTaskEnvelope("task-1", "tenant-1", "type-1", "group-1", "trace-1", 5, Instant.now());
         String json = objectMapper.writeValueAsString(envelope);
         
-        // result[0] is activeKey, result[1] is taskJson
         when(redisTemplate.execute(any(RedisScript.class), anyList(), any(Object[].class)))
                 .thenReturn(List.of("tenant-1:type-1", json));
         
@@ -79,7 +78,7 @@ class RedisDispatchQueueRepositoryTest {
 
     @Test
     void testReclaimTimeoutTasks() throws Exception {
-        ReadyTaskEnvelope envelope = new ReadyTaskEnvelope("task-1", "tenant-1", "type-1", "group-1", "trace-1", Instant.now());
+        ReadyTaskEnvelope envelope = new ReadyTaskEnvelope("task-1", "tenant-1", "type-1", "group-1", "trace-1", 5, Instant.now());
         String json = objectMapper.writeValueAsString(envelope);
         Instant now = Instant.now();
         
@@ -96,14 +95,14 @@ class RedisDispatchQueueRepositoryTest {
 
     @Test
     void testCommitTask() throws Exception {
-        ReadyTaskEnvelope envelope = new ReadyTaskEnvelope("task-1", "tenant-1", "type-1", "group-1", "trace-1", Instant.now());
+        ReadyTaskEnvelope envelope = new ReadyTaskEnvelope("task-1", "tenant-1", "type-1", "group-1", "trace-1", 5, Instant.now());
         repository.commitTask(envelope);
         verify(zSetOps).remove(eq("dispatch:processing:tenant-1:type-1"), anyString());
     }
 
     @Test
     void testRollbackTask() throws Exception {
-        ReadyTaskEnvelope envelope = new ReadyTaskEnvelope("task-1", "tenant-1", "type-1", "group-1", "trace-1", Instant.now());
+        ReadyTaskEnvelope envelope = new ReadyTaskEnvelope("task-1", "tenant-1", "type-1", "group-1", "trace-1", 5, Instant.now());
         when(setOps.add(anyString(), anyString())).thenReturn(1L);
 
         repository.rollbackTask(envelope);
@@ -115,7 +114,7 @@ class RedisDispatchQueueRepositoryTest {
 
     @Test
     void testEnqueueRetry() throws Exception {
-        ReadyTaskEnvelope envelope = new ReadyTaskEnvelope("task-1", "tenant-1", "type-1", "group-1", "trace-1", Instant.now());
+        ReadyTaskEnvelope envelope = new ReadyTaskEnvelope("task-1", "tenant-1", "type-1", "group-1", "trace-1", 5, Instant.now());
         Instant dueTime = Instant.now().plusSeconds(60);
         
         repository.enqueueRetry(envelope, dueTime);
@@ -126,7 +125,7 @@ class RedisDispatchQueueRepositoryTest {
 
     @Test
     void testMoveDueRetryTasks() throws Exception {
-        ReadyTaskEnvelope envelope = new ReadyTaskEnvelope("task-1", "tenant-1", "type-1", "group-1", "trace-1", Instant.now());
+        ReadyTaskEnvelope envelope = new ReadyTaskEnvelope("task-1", "tenant-1", "type-1", "group-1", "trace-1", 5, Instant.now());
         String json = objectMapper.writeValueAsString(envelope);
         Instant now = Instant.now();
         

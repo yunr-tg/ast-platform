@@ -1,0 +1,29 @@
+# task-gateway 生产环境配置
+# 此文件应上传到Nacos Config，data-id: task-gateway-prod.yaml
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: ${GATEWAY_DB_POOL_MAX:30}
+      minimum-idle: ${GATEWAY_DB_POOL_MIN:10}
+
+logging:
+  level:
+    root: WARN
+    com.ast.platform: INFO
+
+ast:
+  gateway:
+    mock-send-success: false
+    outbox-republish-fixed-delay-ms: 3000
+    outbox-batch-size: 200
+    submit-rate-limit-per-second: ${GATEWAY_RATE_LIMIT:5000}
+
+management:
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING:0.1}
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

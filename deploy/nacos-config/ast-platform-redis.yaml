@@ -1,0 +1,34 @@
+# AST Platform Redis配置
+# 此文件应上传到Nacos Config，data-id: ast-platform-redis.yaml
+
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: ${REDIS_TIMEOUT:3000ms}
+      lettuce:
+        pool:
+          enabled: true
+          max-active: ${REDIS_POOL_MAX_ACTIVE:16}
+          max-idle: ${REDIS_POOL_MAX_IDLE:8}
+          min-idle: ${REDIS_POOL_MIN_IDLE:4}
+          max-wait: ${REDIS_POOL_MAX_WAIT:2000ms}
+          time-between-eviction-runs: ${REDIS_POOL_EVICTION_RUNS:60000}
+        shutdown-timeout: ${REDIS_SHUTDOWN_TIMEOUT:100ms}
+        cluster:
+          refresh:
+            adaptive: true
+            period: 30000
+
+ast:
+  redis:
+    dispatch:
+      key-prefix: dispatch
+      ready-queue-ttl-seconds: ${REDIS_READY_QUEUE_TTL:86400}
+      processing-queue-ttl-seconds: ${REDIS_PROCESSING_QUEUE_TTL:3600}
+      retry-queue-ttl-seconds: ${REDIS_RETRY_QUEUE_TTL:86400}
+      lock-wait-timeout-ms: ${REDIS_LOCK_WAIT_TIMEOUT:5000}
+      lock-lease-time-ms: ${REDIS_LOCK_LEASE_TIME:30000}

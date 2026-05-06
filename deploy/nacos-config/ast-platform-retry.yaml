@@ -1,0 +1,66 @@
+# AST Platform 超时与重试策略配置
+# 此文件应上传到Nacos Config，data-id: ast-platform-retry.yaml
+
+ast:
+  gateway:
+    submit-timeout-ms: ${GATEWAY_SUBMIT_TIMEOUT:5000}
+    idempotent-expire-seconds: ${GATEWAY_IDEMPOTENT_EXPIRE:86400}
+    outbox-batch-size: ${GATEWAY_OUTBOX_BATCH:100}
+    outbox-republish-fixed-delay-ms: ${GATEWAY_OUTBOX_DELAY:3000}
+    outbox-base-retry-delay-ms: ${GATEWAY_OUTBOX_RETRY_DELAY:5000}
+    outbox-max-retry-count: ${GATEWAY_OUTBOX_MAX_RETRY:10}
+    outbox-retry-delay-multiplier: ${GATEWAY_OUTBOX_RETRY_MULTIPLIER:2.0}
+    outbox-max-delay-ms: ${GATEWAY_OUTBOX_MAX_DELAY:300000}
+
+  scheduler:
+    callback:
+      enabled: true
+      dispatch-token-ttl-seconds: ${DISPATCH_TOKEN_TTL:3600}
+      callback-timeout-ms: ${CALLBACK_TIMEOUT:30000}
+      
+    notify:
+      enabled: ${NOTIFY_ENABLED:true}
+      fixed-delay-ms: ${NOTIFY_DELAY:5000}
+      batch-size: ${NOTIFY_BATCH:16}
+      http-timeout-ms: ${NOTIFY_HTTP_TIMEOUT:5000}
+      max-retry-count: ${NOTIFY_MAX_RETRY:5}
+      retry-delay-ms: ${NOTIFY_RETRY_DELAY:1000}
+      retry-delay-multiplier: ${NOTIFY_RETRY_MULTIPLIER:2.0}
+      max-retry-delay-ms: ${NOTIFY_MAX_RETRY_DELAY:60000}
+      dead-letter-enabled: ${NOTIFY_DEAD_LETTER:true}
+      
+    compensator:
+      enabled: ${COMPENSATOR_ENABLED:true}
+      fixed-delay-ms: ${COMPENSATOR_DELAY:30000}
+      batch-size: ${COMPENSATOR_BATCH:100}
+      task-timeout-seconds: ${COMPENSATOR_TASK_TIMEOUT:3600}
+      dispatch-timeout-seconds: ${COMPENSATOR_DISPATCH_TIMEOUT:1800}
+      running-timeout-seconds: ${COMPENSATOR_RUNNING_TIMEOUT:7200}
+      max-reclaim-count: ${COMPENSATOR_MAX_RECLAIM:3}
+
+  retry:
+    strategy: ${RETRY_STRATEGY:EXPONENTIAL_BACKOFF}
+    initial-delay-ms: ${RETRY_INITIAL_DELAY:1000}
+    max-delay-ms: ${RETRY_MAX_DELAY:60000}
+    multiplier: ${RETRY_MULTIPLIER:2.0}
+    max-attempts: ${RETRY_MAX_ATTEMPTS:5}
+    jitter-enabled: ${RETRY_JITTER:true}
+    jitter-factor: ${RETRY_JITTER_FACTOR:0.5}
+
+resilience4j:
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: ${RESILIENCE_TIMEOUT:5s}
+        cancel-running-future: true
+  retry:
+    configs:
+      default:
+        max-attempts: ${RESILIENCE_RETRY_MAX:3}
+        wait-duration: ${RESILIENCE_RETRY_WAIT:500ms}
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - java.io.IOException
+          - java.net.SocketTimeoutException
+          - java.net.ConnectException

@@ -37,6 +37,7 @@ class JdbcGatewayTaskRepositoryTest {
                 "trace-lock",
                 TaskStatus.INIT,
                 0,
+                5,
                 now,
                 now
         );

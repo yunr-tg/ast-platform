@@ -1,0 +1,38 @@
+# task-scheduler 生产环境配置
+# 此文件应上传到Nacos Config，data-id: task-scheduler-prod.yaml
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: ${SCHEDULER_DB_POOL_MAX:30}
+      minimum-idle: ${SCHEDULER_DB_POOL_MIN:10}
+
+logging:
+  level:
+    root: WARN
+    com.ast.platform: INFO
+
+ast:
+  scheduler:
+    local-queue-enabled: false
+    dispatcher-fixed-delay-ms: 500
+    dispatcher-batch-size: 32
+    retry-fixed-delay-ms: 500
+    retry-batch-size: 32
+    callback:
+      dispatch-token-ttl-seconds: 7200
+    notify:
+      fixed-delay-ms: 3000
+      batch-size: 32
+    compensator:
+      fixed-delay-ms: 60000
+      batch-size: 200
+
+management:
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING:0.1}
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

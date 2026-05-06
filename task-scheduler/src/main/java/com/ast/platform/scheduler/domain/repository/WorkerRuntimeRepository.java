@@ -12,4 +12,8 @@ public interface WorkerRuntimeRepository {
     Optional<WorkerRuntimeSnapshot> findByWorkerId(String workerId);
 
     List<WorkerRuntimeSnapshot> findDispatchableWorkers(String workerGroup, String taskType);
+    
+    List<WorkerRuntimeSnapshot> findAll();
+    
+    void deleteByWorkerId(String workerId);
 }

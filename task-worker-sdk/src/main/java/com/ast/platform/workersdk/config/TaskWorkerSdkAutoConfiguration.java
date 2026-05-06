@@ -1,17 +1,19 @@
 package com.ast.platform.workersdk.config;
 
-import com.ast.platform.workersdk.client.DefaultWorkerControlPlaneClient;
+import com.ast.platform.workersdk.client.HttpWorkerControlPlaneClient;
 import com.ast.platform.workersdk.client.WorkerControlPlaneClient;
 import com.ast.platform.workersdk.controller.WorkerDispatchController;
 import com.ast.platform.workersdk.handler.TaskExecutionHandler;
+import com.ast.platform.workersdk.lifecycle.WorkerGracefulShutdownHook;
 import com.ast.platform.workersdk.lifecycle.WorkerLifecycleManager;
 import com.ast.platform.workersdk.runtime.WorkerRuntimeManager;
 import io.micrometer.tracing.Tracer;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 
@@ -21,9 +23,15 @@ public class TaskWorkerSdkAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public WorkerControlPlaneClient workerControlPlaneClient(RestClient.Builder builder,
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public WorkerControlPlaneClient workerControlPlaneClient(RestTemplate restTemplate,
                                                              WorkerSdkProperties properties) {
-        return new DefaultWorkerControlPlaneClient(builder, properties);
+        return new HttpWorkerControlPlaneClient(restTemplate, properties);
     }
 
     @Bean
@@ -34,12 +42,22 @@ public class TaskWorkerSdkAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    public WorkerGracefulShutdownHook workerGracefulShutdownHook(
+            WorkerSdkProperties properties,
+            WorkerRuntimeManager runtimeManager,
+            ApplicationContext applicationContext) {
+        return new WorkerGracefulShutdownHook(properties, runtimeManager, applicationContext);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
     public WorkerDispatchController workerDispatchController(List<TaskExecutionHandler> handlers,
                                                              WorkerControlPlaneClient controlPlaneClient,
                                                              WorkerSdkProperties properties,
                                                              WorkerRuntimeManager runtimeManager,
+                                                             WorkerGracefulShutdownHook shutdownHook,
                                                              Tracer tracer) {
-        return new WorkerDispatchController(handlers, controlPlaneClient, properties, runtimeManager, tracer);
+        return new WorkerDispatchController(handlers, controlPlaneClient, properties, runtimeManager, shutdownHook, tracer);
     }
 
     @Bean

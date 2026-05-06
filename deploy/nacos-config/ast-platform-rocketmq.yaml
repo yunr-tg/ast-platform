@@ -1,0 +1,48 @@
+# AST Platform RocketMQ配置
+# 此文件应上传到Nacos Config，data-id: ast-platform-rocketmq.yaml
+
+rocketmq:
+  name-server: ${ROCKETMQ_NAME_SERVER:127.0.0.1:9876}
+  producer:
+    group: GID_AST_PLATFORM_PRODUCER
+    send-message-timeout: ${ROCKETMQ_SEND_TIMEOUT:3000}
+    retry-times-when-send-failed: ${ROCKETMQ_SEND_RETRY:3}
+    retry-times-when-send-async-failed: ${ROCKETMQ_ASYNC_RETRY:3}
+    compress-message-body-threshold: 4096
+    default-topic-queue-num: 4
+    max-message-size: ${ROCKETMQ_MAX_MESSAGE_SIZE:4194304}
+    trace-topic: RMQ_SYS_TRACE_TOPIC
+    enable-message-trace: true
+
+ast:
+  gateway:
+    rocketmq:
+      enabled: true
+      endpoints: ${AST_GATEWAY_RMQ_ENDPOINTS:127.0.0.1:8081}
+      ssl-enabled: ${AST_GATEWAY_RMQ_SSL:false}
+      access-key: ${AST_GATEWAY_RMQ_ACCESS_KEY:}
+      secret-key: ${AST_GATEWAY_RMQ_SECRET_KEY:}
+      message-tag: task-submit
+      topic: ${AST_SUBMIT_TOPIC:AST_TASK_SUBMIT_TOPIC}
+      producer-group: GID_AST_GATEWAY_PRODUCER
+      send-timeout-ms: ${AST_GATEWAY_RMQ_SEND_TIMEOUT:3000}
+      retry-times: ${AST_GATEWAY_RMQ_RETRY:3}
+      batch-max-size: ${AST_GATEWAY_RMQ_BATCH_SIZE:16}
+      batch-max-wait-ms: ${AST_GATEWAY_RMQ_BATCH_WAIT:10}
+
+  scheduler:
+    rocketmq:
+      enabled: true
+      endpoints: ${AST_SCHEDULER_RMQ_ENDPOINTS:127.0.0.1:8081}
+      topic: ${AST_SUBMIT_TOPIC:AST_TASK_SUBMIT_TOPIC}
+      consumer-group: GID_AST_PLATFORM_PUMP
+      tag: "*"
+      consume-thread-min: ${AST_PUMP_CONSUME_THREAD_MIN:4}
+      consume-thread-max: ${AST_PUMP_CONSUME_THREAD_MAX:16}
+      consume-message-batch-max-size: ${AST_PUMP_BATCH_SIZE:16}
+      pull-batch-size: ${AST_PUMP_PULL_BATCH:32}
+      max-reconsume-times: ${AST_PUMP_MAX_RECONSUME:16}
+      suspend-current-queue-time-millis: ${AST_PUMP_SUSPEND_TIME:100}
+      await-duration-ms: ${AST_PUMP_AWAIT_DURATION:30000}
+      message-model: CLUSTERING
+      consume-from-where: CONSUME_FROM_LAST_OFFSET

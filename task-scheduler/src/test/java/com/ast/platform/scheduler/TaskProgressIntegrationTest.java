@@ -57,7 +57,7 @@ public class TaskProgressIntegrationTest {
                 List.of("type-1"), List.of(), 10, 100));
 
         // 2. Dispatch task
-        pumpIngestApplicationService.acceptSubmittedTask(taskId, "tenant-1", "type-1", "group-1", "trace-1");
+        pumpIngestApplicationService.acceptSubmittedTask(taskId, "tenant-1", "type-1", "group-1", "trace-1", 5);
         dispatcherApplicationService.dispatchNext();
 
         // 3. Simulate Progress Reports

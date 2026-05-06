@@ -64,11 +64,6 @@ public class JdbcWorkerRuntimeRepository implements WorkerRuntimeRepository {
 
     @Override
     public List<WorkerRuntimeSnapshot> findDispatchableWorkers(String workerGroup, String taskType) {
-        // Upgrade: Least Loaded + Error Rate Awareness
-        // 1. More available slots first (Resource availability)
-        // 2. Lower error_rate first (Quality awareness)
-        // 3. Lower avg_rt first (Performance awareness)
-        // 4. Older update time first (Fair rotation)
         return jdbcTemplate.query("""
                 select * from scheduler_worker 
                  where worker_group = ? 
@@ -78,6 +73,16 @@ public class JdbcWorkerRuntimeRepository implements WorkerRuntimeRepository {
                 """,
                 ROW_MAPPER, workerGroup, WorkerStatus.UP.name(), WorkerStatus.DEGRADED.name()
         ).stream().filter(worker -> worker.supports(taskType)).collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<WorkerRuntimeSnapshot> findAll() {
+        return jdbcTemplate.query("select * from scheduler_worker order by updated_at desc", ROW_MAPPER);
+    }
+    
+    @Override
+    public void deleteByWorkerId(String workerId) {
+        jdbcTemplate.update("delete from scheduler_worker where worker_id = ?", workerId);
     }
 
     private static Timestamp timestamp(Instant instant) { return instant == null ? null : Timestamp.from(instant); }
